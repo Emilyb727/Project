@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flappy Bunny</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+  body {
+    margin: 0;
+    background: linear-gradient(#c8f5ff 0%, #e9fbff 50%, #ffffff 100%);
+    font-family: "Poppins", sans-serif;
+    overflow: hidden;
+  }
+
+  header {
+    text-align: center;
+    padding: 20px;
+    font-size: 28px;
+    font-weight: 600;
+    color: #ff76b8;
+    text-shadow: 0 2px 3px rgba(0,0,0,0.15);
+  }
+
+  #gameCanvas {
+    display: block;
+    margin: 0 auto;
+    background: transparent;
+  }
+
+  #scoreBox {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(255,255,255,0.8);
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #ff76b8;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+  }
+</style>
+</head>
+
+<body>
+
+<header>🐰 Flappy Bunny 🥕</header>
+
+<div id="scoreBox">Score: <span id="score">0</span></div>
+
+<canvas id="gameCanvas" width="420" height="600"></canvas>
+
+<!-- 🎵 BACKGROUND MUSIC -->
+<audio id="bgMusic" loop>
+  <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7abf54c1f3.mp3?filename=happy-kawaii-110266.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const scoreText = document.getElementById("score");
+const bgMusic = document.getElementById("bgMusic");
+
+let bunny = {
+  x: 80,
+  y: 200,
+  width: 40,
+  height: 40,
+  velocity: 0
+};
+
+let gravity = 0.4;
+let jump = -7;
+let pipes = [];
+let frameCount = 0;
+let score = 0;
+let gameOver = false;
+
+// Start music when user interacts (required on browsers)
+function startMusic() {
+  bgMusic.volume = 0.4;
+  bgMusic.play().catch(() => {});
+}
+canvas.addEventListener("click", startMusic, { once: true });
+window.addEventListener("keydown", startMusic, { once: true });
+
+// --- Draw Bunny ---
+function drawBunny() {
+  ctx.save();
+  ctx.translate(bunny.x, bunny.y);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 20, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(-10, -36, 10, 28);
+  ctx.fillRect(2, -36, 10, 28);
+
+  ctx.fillStyle = "#ffb7d9";
+  ctx.fillRect(-6, -32, 5, 20);
+  ctx.fillRect(4, -32, 5, 20);
+
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.arc(-6, -4, 3, 0, Math.PI * 2);
+  ctx.arc(6, -4, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#ff76b8";
+  ctx.beginPath();
+  ctx.arc(0, 2, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#777";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-14, 2); ctx.lineTo(-26, 0);
+  ctx.moveTo(-14, 6); ctx.lineTo(-26, 8);
+  ctx.moveTo(14, 2); ctx.lineTo(26, 0);
+  ctx.moveTo(14, 6); ctx.lineTo(26, 8);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// --- Carrot Pipes ---
+function drawPipe(pipe) {
+  ctx.fillStyle = "#ff9f52";
+  ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+  ctx.fillRect(pipe.x, pipe.bottom, pipe.width, canvas.height - pipe.bottom);
+
+  ctx.fillStyle = "#7acb58";
+  ctx.fillRect(pipe.x - 5, pipe.top - 20, pipe.width + 10, 20);
+}
+
+function createPipe() {
+  let gap = 150;
+  let topPipeHeight = Math.floor(Math.random() * 250) + 50;
+
+  pipes.push({
+    x: canvas.width,
+    width: 60,
+    top: topPipeHeight,
+    bottom: topPipeHeight + gap,
+    passed: false
+  });
+}
+
+// --- Clouds ---
+function drawCloud(x, y, size = 35) {
+  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  ctx.beginPath();
+  ctx.arc(x, y, size, 0, Math.PI * 2);
+  ctx.arc(x + 30, y + 5, size * .8, 0, Math.PI * 2);
+  ctx.arc(x - 25, y + 10, size * .7, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+let clouds = [
+  {x: 50, y: 80}, {x: 250, y: 60}, {x: 170, y: 140}, {x: 330, y: 120}
+];
+
+// --- Game Loop ---
+function update() {
+  if (gameOver) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  clouds.forEach(cl => {
+    cl.x -= 0.3;
+    if (cl.x < -50) cl.x = canvas.width + 50;
+    drawCloud(cl.x, cl.y);
+  });
+
+  bunny.velocity += gravity;
+  bunny.y += bunny.velocity;
+
+  drawBunny();
+
+  if (frameCount % 90 === 0) createPipe();
+
+  pipes.forEach(pipe => {
+    pipe.x -= 3;
+    drawPipe(pipe);
+
+    if (
+      bunny.x + 20 > pipe.x &&
+      bunny.x - 20 < pipe.x + pipe.width &&
+      (bunny.y - 20 < pipe.top || bunny.y + 20 > pipe.bottom)
+    ) {
+      endGame();
+    }
+
+    if (!pipe.passed && pipe.x + pipe.width < bunny.x) {
+      pipe.passed = true;
+      score++;
+      scoreText.textContent = score;
+    }
+  });
+
+  pipes = pipes.filter(p => p.x > -80);
+
+  if (bunny.y > canvas.height - 20 || bunny.y < 0) {
+    endGame();
+  }
+
+  frameCount++;
+  requestAnimationFrame(update);
+}
+
+function hop() {
+  if (gameOver) return;
+  bunny.velocity = jump;
+
+  const audio = new AudioContext();
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.frequency.value = 650;
+  gain.gain.value = 0.08;
+  osc.connect(gain);
+  gain.connect(audio.destination);
+  osc.start();
+  osc.stop(audio.currentTime + 0.1);
+}
+
+function endGame() {
+  gameOver = true;
+
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#fff";
+  ctx.font = "32px Poppins";
+  ctx.fillText("Game Over!", 115, 250);
+
+  ctx.font = "22px Poppins";
+  ctx.fillText("Click or Space to restart", 75, 290);
+
+  window.onclick = restart;
+  window.onkeydown = (e)=>{ if (e.code === "Space") restart(); };
+}
+
+function restart() {
+  bunny = {x:80,y:200,width:40,height:40,velocity:0};
+  pipes = [];
+  score = 0;
+  scoreText.textContent = 0;
+  gameOver = false;
+  frameCount = 0;
+
+  window.onclick = hop;
+  window.onkeydown = handleKey;
+
+  update();
+}
+
+// --- SPACEBAR SUPPORT ---
+function handleKey(e) {
+  if (e.code === "Space") {
+    hop();
+  }
+}
+
+window.onkeydown = handleKey;
+canvas.onclick = hop;
+update();
+</script>
+
+</body>
+</html>
