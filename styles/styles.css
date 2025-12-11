@@ -1,0 +1,33 @@
+/* Background */
+body {
+    background-color: black;
+}
+
+/* Main Title */
+h1 {
+    color: rgb(9, 27, 44);
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Anchor target */
+#top {
+    color: rgb(7, 36, 34);
+}
+
+/* Special list styles */
+.fancy {
+    color: beige;
+    text-decoration: underline;
+}
+
+.ugly {
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+}
+
+/* Section Headers */
+h2 {
+    color: white;
+    text-align: right;
+    font-style: italic;
+    text-decoration: und
